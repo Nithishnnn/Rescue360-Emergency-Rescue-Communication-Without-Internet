@@ -152,3 +152,139 @@
 .leaflet-marker-icon:focus {
   outline: none !important;
 }
+
+/* ─── Marker Movement Animation ─────────────────────────────────────────── */
+
+/* Neon-pink trail dot that fades out */
+@keyframes trail-fade {
+  0%   { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 0;    transform: scale(0.3); }
+}
+.marker-trail-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ff2d78 0%, rgba(255,45,120,0) 70%);
+  pointer-events: none;
+  animation: trail-fade 1s ease-out forwards;
+  will-change: opacity, transform;
+}
+
+/* Soft pulse burst at the departure point */
+@keyframes depart-pulse {
+  0%   { transform: scale(0.5); opacity: 0.9; }
+  60%  { transform: scale(3);   opacity: 0.4; }
+  100% { transform: scale(4.5); opacity: 0;   }
+}
+.marker-depart-pulse {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 45, 120, 0.8);
+  pointer-events: none;
+  animation: depart-pulse 0.6s ease-out forwards;
+  will-change: opacity, transform;
+}
+
+/* Cyberpunk ripple ring at the arrival point */
+@keyframes arrive-ripple {
+  0%   { transform: scale(0.4); opacity: 1; }
+  80%  { transform: scale(3.2); opacity: 0.5; }
+  100% { transform: scale(4);   opacity: 0; }
+}
+.marker-arrive-ripple {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 242, 255, 0.9);
+  box-shadow: 0 0 8px rgba(0, 242, 255, 0.6);
+  pointer-events: none;
+  animation: arrive-ripple 0.7s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+  will-change: opacity, transform;
+}
+
+/* ─── Live Chart Neon Flash (new data arrives) ─────────────────────────── */
+@keyframes neonFlash {
+  0%   { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+/* Wiggle animation for notification bell */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(15deg); }
+  30% { transform: rotate(-15deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-10deg); }
+  75% { transform: rotate(4deg); }
+  90% { transform: rotate(-4deg); }
+}
+.animate-wiggle {
+  animation: wiggle 0.8s ease-in-out;
+}
+
+/* Light Theme styles */
+.light-theme {
+  --background: #f0f2f5;
+  --text-gray-100: #1a202c;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  background-color: #f0f2f5 !important;
+  color: #1a202c !important;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(0, 242, 255, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 80% 20%, rgba(255, 0, 85, 0.08) 0%, transparent 40%) !important;
+}
+
+.light-theme .glass-card,
+.light-theme .bg-card,
+.light-theme aside {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1a202c !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
+.light-theme nav {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.light-theme .text-white,
+.light-theme h1,
+.light-theme h2,
+.light-theme h3,
+.light-theme h4,
+.light-theme p,
+.light-theme span:not(.text-neonCyan):not(.text-neonRed):not(.text-neonGreen) {
+  color: #1f2937 !important;
+}
+
+.light-theme .text-gray-400,
+.light-theme .text-gray-500 {
+  color: #4b5563 !important;
+}
+
+.light-theme input {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1f2937 !important;
+}
+
+.light-theme input::placeholder {
+  color: #9ca3af !important;
+}
+
+.light-theme tr:hover {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.light-theme .custom-popup .bg-\[\#0a0a0f\] {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+.light-theme .custom-popup .text-white {
+  color: #1f2937 !important;
+}
+.light-theme .leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+

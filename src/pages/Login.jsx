@@ -27,7 +27,7 @@ const Login = ({ onLogin }) => {
           <div className="w-16 h-16 bg-neonCyan rounded-2xl flex items-center justify-center shadow-neon-cyan mb-6 rotate-12 group-hover:rotate-0 transition-transform">
             <ShieldAlert className="text-background" size={32} />
           </div>
-          <h2 className="text-3xl font-black tracking-tighter text-white">RESCUE<span className="text-neonCyan text-glow">OPS</span></h2>
+          <h2 className="text-3xl font-black tracking-tighter text-white">RESCUE<span className="text-neonCyan text-glow">360°</span></h2>
           <p className="text-gray-500 text-sm mt-2 uppercase tracking-[0.3em]">Command Authorization</p>
         </div>
 

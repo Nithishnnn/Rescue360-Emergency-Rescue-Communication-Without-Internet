@@ -12,10 +12,6 @@ export const useRealtime = () => {
         { event: 'INSERT', schema: 'public', table: 'sos_alerts' },
         (payload) => {
           setLatestAlert(payload.new);
-          // Play emergency sound
-          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-          audio.volume = 0.7;
-          audio.play().catch(() => {}); // suppress autoplay policy errors
         }
       )
       .subscribe();

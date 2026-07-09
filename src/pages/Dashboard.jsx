@@ -4,7 +4,7 @@ import {
   Clock, 
   Cpu 
 } from 'lucide-react';
-import { useAlerts } from '../hooks/useAlerts';
+import { useAlert } from '../context/AlertContext';
 import { useRealtime } from '../hooks/useRealtime';
 import AlertCard from '../components/AlertCard';
 import AlertTable from '../components/AlertTable';
@@ -32,7 +32,7 @@ const buildChartData = (alerts) => {
 const Skeleton = ({ className }) => <div className={`animate-pulse bg-white/10 rounded-xl ${className}`} />;
 
 const Dashboard = () => {
-  const { alerts, loading, stats, error } = useAlerts();
+  const { alerts, loading, stats, error } = useAlert();
   const { latestAlert, setLatestAlert } = useRealtime();
 
   const chartData = buildChartData(alerts);

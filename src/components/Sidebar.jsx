@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, ShieldAlert, BarChart2, Settings, LogOut, ChevronRight } from 'lucide-react';
+import { useAlert } from '../context/AlertContext';
 
 const Sidebar = () => {
+  const { confirmTermination, terminationState } = useAlert();
   const menuItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
     { path: '/alerts', icon: ShieldAlert, label: 'Emergency Logs' },
@@ -14,10 +16,13 @@ const Sidebar = () => {
     <aside className="w-64 h-screen bg-card border-r border-white/5 flex flex-col items-center py-8 relative">
       {/* Brand */}
       <div className="flex items-center gap-3 mb-12 px-6">
-        <div className="w-10 h-10 bg-neonRed rounded-2xl flex items-center justify-center shadow-neon-red animate-pulse rotate-3">
+        <div className="w-10 h-10 bg-neonRed rounded-2xl flex items-center justify-center shadow-neon-red animate-pulse rotate-3 shrink-0">
           <ShieldAlert className="text-white" size={24} />
         </div>
-        <h1 className="text-xl font-black text-white tracking-tighter">RESCUE<span className="text-neonCyan">OPS</span></h1>
+        <div className="flex flex-col">
+          <h1 className="text-xl font-black text-white tracking-tighter uppercase leading-none">RESCUE<span className="text-neonCyan">360°</span></h1>
+          <span className="text-[7.5px] text-gray-500 font-bold uppercase tracking-wider mt-1 whitespace-nowrap">Real-Time Emergency Response System</span>
+        </div>
       </div>
 
       {/* Profile summary */}
@@ -55,7 +60,13 @@ const Sidebar = () => {
 
       {/* Footer / Logout */}
       <div className="mt-auto w-full px-4 pt-10 border-t border-white/5">
-        <button className="w-full flex items-center gap-3 px-4 py-3 text-neonRed/80 hover:bg-neonRed/10 hover:text-neonRed rounded-xl transition-all font-bold text-xs uppercase tracking-widest">
+        <button 
+          onClick={confirmTermination}
+          disabled={terminationState !== 'idle'}
+          className={`w-full flex items-center gap-3 px-4 py-3 text-neonRed/80 hover:bg-neonRed/10 hover:text-neonRed rounded-xl transition-all font-bold text-xs uppercase tracking-widest ${
+            terminationState !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
           <LogOut size={20} />
           <span>Terminate Session</span>
         </button>

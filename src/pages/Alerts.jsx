@@ -1,11 +1,11 @@
 import React from 'react';
 import Navbar from '../components/Navbar';
 import AlertTable from '../components/AlertTable';
-import { useAlerts } from '../hooks/useAlerts';
+import { useAlert } from '../context/AlertContext';
 import { ShieldAlert, Download } from 'lucide-react';
 
 const Alerts = () => {
-  const { alerts, loading, error } = useAlerts();
+  const { alerts, loading, error } = useAlert();
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">

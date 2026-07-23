@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Download, MapPin, ExternalLink, History, Cpu, User } from 'lucide-react';
+import { useAlert } from '../context/AlertContext';
 
 const statusStyles = {
   ACTIVE: 'bg-red-500/20 text-red-400 border border-red-500/40',
@@ -22,6 +23,7 @@ const SkeletonRow = () => (
 );
 
 const AlertTable = ({ alerts = [], loading = false }) => {
+  const { setFocusedAlertId } = useAlert();
   const [searchTerm, setSearchTerm] = useState('');
 
   const formatDate = (isoString) => {
@@ -100,7 +102,11 @@ const AlertTable = ({ alerts = [], loading = false }) => {
              filtered.map(alert => {
                const { date, time } = formatDate(alert.created_at);
                 return (
-                  <tr key={alert.id} className="hover:bg-white/5 transition-colors">
+                  <tr 
+                    key={alert.id} 
+                    className="hover:bg-white/5 cursor-pointer transition-colors"
+                    onClick={() => setFocusedAlertId(alert.id)}
+                  >
                    <td className="px-4 py-4">
                      <div className="flex flex-col">
                        <span className="text-white font-medium">{date}</span>
@@ -137,9 +143,15 @@ const AlertTable = ({ alerts = [], loading = false }) => {
                      </span>
                    </td>
                    <td className="px-4 py-4 text-center">
-                     <a href={alert.google_map_link} target="_blank" rel="noreferrer" className="text-gray-500 hover:text-neonCyan transition-colors">
-                       <ExternalLink size={16} />
-                     </a>
+                      <a 
+                        href={alert.google_map_link} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-gray-500 hover:text-neonCyan transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink size={16} />
+                      </a>
                    </td>
                  </tr>
                );

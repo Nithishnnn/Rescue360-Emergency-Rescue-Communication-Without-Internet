@@ -288,3 +288,19 @@
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
+/* Route Intelligence animation & glow style */
+.route-glow-line {
+  filter: drop-shadow(0 0 5px rgba(0, 242, 255, 0.9));
+  stroke-dasharray: 10, 10;
+  animation: routeDashAnimation 25s linear infinite;
+}
+
+@keyframes routeDashAnimation {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+

@@ -1,8 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, MapPin, X, Cpu, User } from 'lucide-react';
+import { useAlert } from '../context/AlertContext';
 
 const NotificationPopup = ({ alert, onClose }) => {
+  const { traceSignal } = useAlert();
+  const [errorMsg, setErrorMsg] = useState('');
+
   useEffect(() => {
     if (!alert) return;
     const timer = setTimeout(onClose, 8000);
@@ -10,6 +14,27 @@ const NotificationPopup = ({ alert, onClose }) => {
   }, [alert, onClose]);
 
   const getTime = (iso) => iso ? new Date(iso).toLocaleTimeString() : 'Just now';
+
+  const handleTraceSignal = (e) => {
+    e.preventDefault();
+    if (!alert || !alert.latitude || !alert.longitude) {
+      setErrorMsg('Location unavailable');
+      setTimeout(() => setErrorMsg(''), 3000);
+      return;
+    }
+    const lat = Number(alert.latitude);
+    const lng = Number(alert.longitude);
+    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+      setErrorMsg('Location unavailable');
+      setTimeout(() => setErrorMsg(''), 3000);
+      return;
+    }
+
+    if (traceSignal) {
+      traceSignal(alert);
+    }
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -57,9 +82,18 @@ const NotificationPopup = ({ alert, onClose }) => {
 
             <div className="flex items-center justify-between">
                <span className="text-[10px] text-gray-600 font-mono">{getTime(alert.created_at)}</span>
-               <a href={alert.google_map_link} target="_blank" rel="noreferrer" className="text-[10px] text-neonCyan font-black uppercase tracking-widest hover:underline">
-                 Trace Signal →
-               </a>
+               {errorMsg ? (
+                 <span className="text-[10px] text-neonRed font-bold uppercase tracking-widest animate-pulse">
+                   {errorMsg}
+                 </span>
+               ) : (
+                 <button 
+                   onClick={handleTraceSignal} 
+                   className="text-[10px] text-neonCyan font-black uppercase tracking-widest hover:underline bg-transparent border-none cursor-pointer p-0"
+                 >
+                   Trace Signal →
+                 </button>
+               )}
             </div>
 
             <motion.div

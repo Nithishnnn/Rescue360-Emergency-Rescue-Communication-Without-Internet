@@ -21,7 +21,7 @@ const AnalyticsCard = ({ title, data, dataKey, color = "#00f2ff" }) => {
         </div>
       </div>
       
-      <div className="flex-1 w-full">
+      <div className="w-full h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>

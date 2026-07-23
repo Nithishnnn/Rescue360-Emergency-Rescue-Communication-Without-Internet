@@ -86,7 +86,7 @@ export const AlertTrendLive = ({ data, hasData, lastUpdate, glowKey }) => {
       {!hasData ? (
         <NoData />
       ) : (
-        <div className="flex-1 w-full relative z-10">
+        <div className="w-full h-[200px] relative z-10">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data}>
               <defs>
@@ -180,7 +180,7 @@ export const RSSIChartLive = ({ data, hasData, lastUpdate, glowKey }) => {
       {!hasData ? (
         <NoData />
       ) : (
-        <div className="flex-1 w-full relative z-10">
+        <div className="w-full h-[200px] relative z-10">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
               <defs>
@@ -260,7 +260,7 @@ export const DistanceChartLive = ({ data, hasData, lastUpdate, glowKey }) => {
       {!hasData ? (
         <NoData />
       ) : (
-        <div className="flex-1 w-full relative z-10">
+        <div className="w-full h-[200px] relative z-10">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <defs>

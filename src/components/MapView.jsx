@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { Navigation, Info, Signal, Clock, MapPin, User, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAlert } from '../context/AlertContext';
 import 'leaflet/dist/leaflet.css';
 
@@ -88,6 +89,35 @@ const createClusterIcon = (count) => new L.DivIcon({
   iconSize: [44, 44],
   iconAnchor: [22, 22],
   popupAnchor: [0, -22]
+});
+
+// Custom icons for Route Navigation start/end
+const createRescueVehicleIcon = () => new L.DivIcon({
+  className: 'rescue-vehicle-icon',
+  html: `
+    <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+      <div class="absolute inset-0 bg-[#00f2ff]/30 rounded-full animate-ping" style="animation-duration: 2s;"></div>
+      <div style="background-color: #00f2ff; color: #0a0a0f; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 15px #00f2ff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; z-index: 10;">
+        🚑
+      </div>
+    </div>
+  `,
+  iconSize: [34, 34],
+  iconAnchor: [17, 17]
+});
+
+const createSosDestinationIcon = () => new L.DivIcon({
+  className: 'sos-destination-icon',
+  html: `
+    <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+      <div class="absolute inset-0 bg-neonRed/30 rounded-full animate-ping" style="animation-duration: 1.5s;"></div>
+      <div style="background-color: #ff0055; color: white; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 15px #ff0055; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; z-index: 10;">
+        🚨
+      </div>
+    </div>
+  `,
+  iconSize: [34, 34],
+  iconAnchor: [17, 17]
 });
 
 // Custom clustering algorithm based on screen projected pixel distance
@@ -239,6 +269,7 @@ function animateMarker(map, markerRef, fromLat, fromLng, toLat, toLng) {
 // ─── Map Controller (Centering, Zoom tracking, Event registration) ─────────
 const MapController = ({ lat, lng, latestAlertId, isNew, onMapReady, onZoomChange, focusedAlertId, alerts, zoomLevel }) => {
   const map = useMap();
+  const { handleMapClick } = useAlert();
 
   useEffect(() => {
     if (onMapReady) {
@@ -258,28 +289,28 @@ const MapController = ({ lat, lng, latestAlertId, isNew, onMapReady, onZoomChang
   }, [map, onZoomChange]);
 
   useEffect(() => {
-    if (focusedAlertId && alerts && alerts.length > 0) {
-      const target = alerts.find(a => a.id === focusedAlertId);
-      if (target) {
-        const tLat = Number(target.latitude);
-        const tLng = Number(target.longitude);
-        if (!isNaN(tLat) && !isNaN(tLng)) {
-          const targetZoom = parseInt(zoomLevel, 10) || 15;
-          map.setView([tLat, tLng], targetZoom, { animate: true });
-        }
-      }
-    } else if (isNew && lat && lng) {
+    if (!focusedAlertId && isNew && lat && lng) {
       map.setView([lat, lng], 15, { animate: true });
     }
-  }, [lat, lng, isNew, map, focusedAlertId, alerts, zoomLevel]);
+  }, [lat, lng, isNew, map, focusedAlertId]);
+
+  useEffect(() => {
+    const clickHandler = (e) => {
+      // Ignore background map clicks
+    };
+    map.on('click', clickHandler);
+    return () => {
+      map.off('click', clickHandler);
+    };
+  }, [map]);
 
   return null;
 };
 
 // ─── Animated marker wrapper ──────────────────────────────────────────────────
-const AnimatedMarker = ({ alert, icon, isBlinking, children }) => {
+const AnimatedMarker = ({ alert, icon, isBlinking, autoOpenPopupAlertId, children }) => {
   const map = useMap();
-  const { settings, focusedAlertId } = useAlert();
+  const { settings, focusedAlertId, setFocusedAlertId } = useAlert();
   const markerRef = useRef(null);
   const prevPosRef = useRef({ lat: alert.latitude, lng: alert.longitude });
   const cancelAnimRef = useRef(null);
@@ -318,20 +349,31 @@ const AnimatedMarker = ({ alert, icon, isBlinking, children }) => {
     };
   }, []);
 
-  const shouldOpen = isBlinking || alert.id === focusedAlertId;
+  const shouldOpen = alert.id === autoOpenPopupAlertId;
+
+  useEffect(() => {
+    if (markerRef.current && shouldOpen) {
+      const timer = setTimeout(() => {
+        if (markerRef.current && markerRef.current.openPopup) {
+          markerRef.current.openPopup();
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldOpen]);
 
   return (
     <Marker
       key={alert.id}
       position={[alert.latitude, alert.longitude]}
       icon={icon}
+      eventHandlers={{
+        click: () => {
+          setFocusedAlertId(alert.id);
+        }
+      }}
       ref={(el) => {
         markerRef.current = el;
-        if (el && shouldOpen) {
-          setTimeout(() => {
-            if (el && el.openPopup) el.openPopup();
-          }, 350);
-        }
       }}
     >
       {children}
@@ -340,16 +382,20 @@ const AnimatedMarker = ({ alert, icon, isBlinking, children }) => {
 };
 
 // ─── Cluster Marker component ───────────────────────────────────────────────
-const ClusterMarker = ({ cluster }) => {
+const ClusterMarker = ({ cluster, onZoomToLocation }) => {
   const map = useMap();
-
-  const handleZoom = () => {
-    map.setView([cluster.latitude, cluster.longitude], map.getZoom() + 2, { animate: true });
-  };
 
   const latestAlert = useMemo(() => {
     return [...cluster.alerts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
   }, [cluster.alerts]);
+
+  const handleZoom = () => {
+    if (onZoomToLocation && latestAlert) {
+      onZoomToLocation(latestAlert);
+    } else {
+      map.setView([cluster.latitude, cluster.longitude], map.getZoom() + 2, { animate: true });
+    }
+  };
 
   const users = useMemo(() => {
     const names = cluster.alerts.map(a => a.user_name || 'Unknown').filter(Boolean);
@@ -400,13 +446,245 @@ const ClusterMarker = ({ cluster }) => {
   );
 };
 
+// ─── Signal History Panel Overlay ─────────────────────────────────────────────
+const SignalHistoryPanel = ({ clickedLocations, activeWeatherCoords, selectClickedLocation, map }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const historyItems = useMemo(() => {
+    return clickedLocations.slice(0, 10);
+  }, [clickedLocations]);
+
+  if (clickedLocations.length === 0) return null;
+
+  return (
+    <div className="bg-[#0a0a0f]/90 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300">
+      {/* Header */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-3 bg-white/5 border-b border-white/5 text-left text-white hover:bg-white/10 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Clock size={12} className="text-neonCyan animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Signal History ({clickedLocations.length})</span>
+        </div>
+        <span className="text-[10px] text-gray-500 font-bold font-mono">
+          {isOpen ? '▲' : '▼'}
+        </span>
+      </button>
+
+      {/* Expanded List */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="p-2 max-h-56 overflow-y-auto custom-scrollbar space-y-1.5">
+              {historyItems.map((loc) => {
+                const isActive = activeWeatherCoords?.isCustom && activeWeatherCoords.id === loc.id;
+                const formattedTime = new Date(loc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                return (
+                  <div
+                    key={loc.id}
+                    onClick={() => {
+                      selectClickedLocation(loc);
+                      if (map) {
+                        map.setView([loc.latitude, loc.longitude], map.getZoom(), { animate: true });
+                      }
+                    }}
+                    className={`p-2 rounded-lg border cursor-pointer transition-all flex flex-col justify-between gap-1 ${
+                      isActive
+                        ? 'bg-neonCyan/15 border-neonCyan/40 text-white shadow-[0_0_8px_rgba(0,242,255,0.15)]'
+                        : 'bg-white/5 border-white/5 hover:bg-white/10 text-gray-300'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start gap-1">
+                      <span className="text-[9.5px] font-bold truncate max-w-[150px] leading-tight">
+                        {loc.area || `Syncing location...`}
+                      </span>
+                      <span className="text-[8px] font-mono text-gray-500 uppercase shrink-0">
+                        {formattedTime}
+                      </span>
+                    </div>
+                    {loc.weatherCondition && (
+                      <div className="flex items-center justify-between text-[8px] text-gray-400 font-mono mt-0.5">
+                        <span>{loc.weatherCondition}</span>
+                        <span className="text-neonCyan font-bold">{loc.temperature}°C</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // ─── Main MapView component ───────────────────────────────────────────────────
 const MapView = ({ lat = 13.0827, lng = 80.2707, alerts = [], latestRealtimeAlert = null }) => {
-  const { settings, focusedAlertId } = useAlert();
+  const { 
+    settings, 
+    focusedAlertId, 
+    setMapCenter, 
+    setFocusedAlertId, 
+    routeCoords, 
+    fitRouteTrigger,
+    clickedLocations,
+    activeWeatherCoords,
+    selectClickedLocation,
+    traceTrigger
+  } = useAlert();
   const [newlyArrivedId, setNewlyArrivedId] = useState(null);
   const [timeFilter, setTimeFilter] = useState('all'); // all, today, week, month
   const [map, setMap] = useState(null);
   const [zoom, setZoom] = useState(15);
+
+  const [pulsingAlertId, setPulsingAlertId] = useState(null);
+  const [autoOpenPopupAlertId, setAutoOpenPopupAlertId] = useState(null);
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const pulseTimerRef = useRef(null);
+  const toastTimerRef = useRef(null);
+  const lastFocusedAlertIdRef = useRef(null);
+
+  const triggerToast = useCallback((msg) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMessage(msg);
+    setShowToast(true);
+    toastTimerRef.current = setTimeout(() => {
+      setShowToast(false);
+    }, 3500);
+  }, []);
+
+  useEffect(() => {
+    if (!map || !focusedAlertId || !alerts || alerts.length === 0) return;
+
+    if (lastFocusedAlertIdRef.current === focusedAlertId) {
+      setAutoOpenPopupAlertId(focusedAlertId);
+      return;
+    }
+    lastFocusedAlertIdRef.current = focusedAlertId;
+
+    const target = alerts.find(a => a.id === focusedAlertId);
+    if (!target) return;
+
+    const tLat = Number(target.latitude);
+    const tLng = Number(target.longitude);
+    if (isNaN(tLat) || isNaN(tLng)) return;
+
+    const bounds = map.getBounds();
+    const isVisible = bounds.pad(-0.05).contains([tLat, tLng]);
+
+    if (isVisible) {
+      map.panTo([tLat, tLng], { animate: true, duration: 1 });
+      setAutoOpenPopupAlertId(focusedAlertId);
+    } else {
+      const currentZoom = map.getZoom();
+      const targetZoom = currentZoom >= 16 && currentZoom <= 17 ? currentZoom : 16.5;
+
+      map.flyTo([tLat, tLng], targetZoom, {
+        animate: true,
+        duration: 1.5
+      });
+
+      map.once('moveend', () => {
+        setAutoOpenPopupAlertId(focusedAlertId);
+      });
+    }
+  }, [focusedAlertId, alerts, map, setAutoOpenPopupAlertId]);
+
+  useEffect(() => {
+    if (!focusedAlertId) {
+      setAutoOpenPopupAlertId(null);
+      lastFocusedAlertIdRef.current = null;
+    }
+  }, [focusedAlertId, setAutoOpenPopupAlertId]);
+
+  useEffect(() => {
+    if (!map || !traceTrigger || !traceTrigger.id) return;
+
+    const tLat = Number(traceTrigger.latitude);
+    const tLng = Number(traceTrigger.longitude);
+    if (isNaN(tLat) || isNaN(tLng)) return;
+
+    map.flyTo([tLat, tLng], 18, {
+      animate: true,
+      duration: 1.5
+    });
+
+    map.once('moveend', () => {
+      setAutoOpenPopupAlertId(traceTrigger.id);
+    });
+  }, [traceTrigger, map, setAutoOpenPopupAlertId]);
+
+  useEffect(() => {
+    if (map && routeCoords && routeCoords.length > 0) {
+      const bounds = L.latLngBounds(routeCoords);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16, animate: true, duration: 1.5 });
+    }
+  }, [fitRouteTrigger, map, routeCoords]);
+
+  useEffect(() => {
+    return () => {
+      if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  const handleZoomToLocation = useCallback((alert) => {
+    if (!map || !alert) return;
+
+    const mapEl = map.getContainer();
+    const rect = mapEl.getBoundingClientRect();
+    const isOutsideViewport = rect.top < 0 || rect.bottom > window.innerHeight;
+
+    triggerToast("Navigating to emergency location...");
+
+    const performFlyTo = () => {
+      const targetLat = Number(alert.latitude);
+      const targetLng = Number(alert.longitude);
+
+      if (map.getZoom() === 17 && 
+          Math.abs(map.getCenter().lat - targetLat) < 0.0001 && 
+          Math.abs(map.getCenter().lng - targetLng) < 0.0001) {
+        map.setView([targetLat, targetLng], 15, { animate: false });
+      }
+
+      map.flyTo([targetLat, targetLng], 17, {
+        duration: 2.5,
+        easeLinearity: 0.25
+      });
+
+      map.once('moveend', () => {
+        map.panTo([targetLat, targetLng]);
+
+        if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+        setPulsingAlertId(alert.id);
+        pulseTimerRef.current = setTimeout(() => {
+          setPulsingAlertId(null);
+        }, 10000);
+
+        setAutoOpenPopupAlertId(alert.id);
+        setTimeout(() => {
+          setAutoOpenPopupAlertId(null);
+        }, 1000);
+      });
+    };
+
+    if (isOutsideViewport) {
+      mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(performFlyTo, 800);
+    } else {
+      performFlyTo();
+    }
+  }, [map, triggerToast]);
 
   const latestAlert = useMemo(() => {
     if (alerts.length === 0) return null;
@@ -469,6 +747,18 @@ const MapView = ({ lat = 13.0827, lng = 80.2707, alerts = [], latestRealtimeAler
     return getClusters(filteredAlerts, map, zoom);
   }, [filteredAlerts, map, zoom]);
 
+  useEffect(() => {
+    if (!map) return;
+    const updateCenter = () => {
+      const center = map.getCenter();
+      setMapCenter({ lat: center.lat, lng: center.lng });
+    };
+    map.on('moveend', updateCenter);
+    return () => {
+      map.off('moveend', updateCenter);
+    };
+  }, [map, setMapCenter]);
+
   return (
     <div className="glass-card w-full h-full relative overflow-hidden group border-neonCyan/20">
       {/* Top Left Overlay Card */}
@@ -519,6 +809,21 @@ const MapView = ({ lat = 13.0827, lng = 80.2707, alerts = [], latestRealtimeAler
         </div>
       </div>
 
+      {/* Small Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[2000] bg-[#0a0a0f]/90 backdrop-blur-md border border-neonCyan/40 text-neonCyan font-bold text-xs px-4 py-2.5 rounded-xl shadow-[0_0_15px_rgba(0,242,255,0.35)] flex items-center gap-2 pointer-events-none"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-neonCyan animate-ping"></div>
+            <span className="uppercase tracking-widest">{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <MapContainer
         center={[lat, lng]}
         zoom={15}
@@ -549,11 +854,13 @@ const MapView = ({ lat = 13.0827, lng = 80.2707, alerts = [], latestRealtimeAler
           zoomLevel={settings.zoomLevel}
         />
 
+
+
         {clusters.map((cluster) => {
           if (cluster.count === 1) {
             const alert = cluster.alerts[0];
-            const isBlinking = (alert.id === latestAlert?.id || alert.id === newlyArrivedId || alert.id === focusedAlertId) && settings.markerAnimation !== 'off';
-            const icon = getAlertIcon(alert, latestAlert?.id, newlyArrivedId, focusedAlertId, settings.markerAnimation);
+            const isBlinking = (alert.id === latestAlert?.id || alert.id === newlyArrivedId || alert.id === focusedAlertId || alert.id === pulsingAlertId) && settings.markerAnimation !== 'off';
+            const icon = getAlertIcon(alert, latestAlert?.id, newlyArrivedId, focusedAlertId || pulsingAlertId, settings.markerAnimation);
 
             // Fetch alert history for the local area (~50 meters / 0.0005 deg coordinates delta)
             const history = alerts
@@ -569,6 +876,7 @@ const MapView = ({ lat = 13.0827, lng = 80.2707, alerts = [], latestRealtimeAler
                 alert={alert}
                 icon={icon}
                 isBlinking={isBlinking}
+                autoOpenPopupAlertId={autoOpenPopupAlertId}
               >
                 <Popup className="custom-popup">
                   <div className="p-3 w-64 bg-[#0a0a0f] text-white rounded-lg border border-white/10 shadow-2xl">
@@ -649,11 +957,24 @@ const MapView = ({ lat = 13.0827, lng = 80.2707, alerts = [], latestRealtimeAler
               <ClusterMarker
                 key={cluster.id}
                 cluster={cluster}
+                onZoomToLocation={handleZoomToLocation}
               />
             );
           }
         })}
+
+        {/* Clicked locations are displayed only in the History Panel; no temporary markers are rendered on the map */}
       </MapContainer>
+
+      {/* Bottom Left: Signal History Panel */}
+      <div className="absolute bottom-4 left-4 z-[1000] w-64 pointer-events-auto flex flex-col">
+        <SignalHistoryPanel 
+          clickedLocations={clickedLocations} 
+          activeWeatherCoords={activeWeatherCoords}
+          selectClickedLocation={selectClickedLocation}
+          map={map}
+        />
+      </div>
 
       {/* Visual Decoration / Scanners */}
       <div className="absolute inset-0 pointer-events-none border-2 border-neonCyan/5 rounded-2xl z-[1001]"></div>

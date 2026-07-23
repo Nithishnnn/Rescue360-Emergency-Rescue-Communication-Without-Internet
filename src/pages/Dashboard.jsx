@@ -9,10 +9,11 @@ import { useRealtime } from '../hooks/useRealtime';
 import AlertCard from '../components/AlertCard';
 import AlertTable from '../components/AlertTable';
 import MapView from '../components/MapView';
-import StatusCard from '../components/StatusCard';
 import NotificationPopup from '../components/NotificationPopup';
 import AnalyticsCard from '../components/AnalyticsCard';
 import Navbar from '../components/Navbar';
+import WeatherForecastPanel from '../components/WeatherForecastPanel';
+import RightSidebarPanel from '../components/RightSidebarPanel';
 
 const buildChartData = (alerts) => {
   const hours = [...Array(6)].map((_, i) => {
@@ -32,7 +33,7 @@ const buildChartData = (alerts) => {
 const Skeleton = ({ className }) => <div className={`animate-pulse bg-white/10 rounded-xl ${className}`} />;
 
 const Dashboard = () => {
-  const { alerts, loading, stats, error } = useAlert();
+  const { alerts, loading, stats, error, setFocusedAlertId } = useAlert();
   const { latestAlert, setLatestAlert } = useRealtime();
 
   const chartData = buildChartData(alerts);
@@ -63,17 +64,20 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-12 gap-8">
-          <div className="col-span-12 lg:col-span-8 h-[500px]">
-            {loading ? <Skeleton className="w-full h-full" /> : 
-             <MapView 
-               lat={latestLat} 
-               lng={latestLng} 
-               alerts={alerts} 
-               latestRealtimeAlert={latestAlert}
-             />}
+          <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
+            <div className="h-[500px] w-full">
+              {loading ? <Skeleton className="w-full h-full" /> : 
+               <MapView 
+                 lat={latestLat} 
+                 lng={latestLng} 
+                 alerts={alerts} 
+                 latestRealtimeAlert={latestAlert}
+               />}
+            </div>
+            <WeatherForecastPanel />
           </div>
-          <div className="col-span-12 lg:col-span-4">
-            <StatusCard status={{ loraConnected: true, gpsActive: true, receiverOnline: true, battery: alerts[0]?.battery_level || 100, signalStrength: alerts[0]?.signal_strength || 0 }} />
+          <div className="col-span-12 lg:col-span-4 flex flex-col">
+            <RightSidebarPanel />
           </div>
         </div>
 
@@ -83,7 +87,11 @@ const Dashboard = () => {
             <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-5">Live Transmissions</h3>
             <div className="space-y-3">
               {alerts.slice(0, 4).map((alert, i) => (
-                <div key={alert.id || i} className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-xl">
+                <div 
+                  key={alert.id || i} 
+                  className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 cursor-pointer transition-all hover:border-neonCyan/30 group"
+                  onClick={() => setFocusedAlertId(alert.id)}
+                >
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${alert.alert_status === 'ACTIVE' ? 'bg-red-500' : 'bg-green-500'}`} />
                     <div>

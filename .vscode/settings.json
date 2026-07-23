@@ -1,9 +1,0 @@
-{
-  "css.lint.unknownAtRules": "ignore",
-  "tailwindCSS.includeLanguages": {
-    "css": "css"
-  },
-  "editor.quickSuggestions": {
-    "strings": true
-  }
-}
